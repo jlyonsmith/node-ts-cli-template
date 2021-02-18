@@ -1,6 +1,6 @@
 // This are the customization rules for use by the @johnls/git-extra tool
 
-var params = await ui.prompts([
+const params = await ui.prompts([
   {
     name: "projectName",
     initial: args.projectName,
@@ -22,20 +22,29 @@ var params = await ui.prompts([
   },
 ])
 
-params.projectNamePascal = changeCase.pascal(params.projectName)
+const newBinName = changeCase.param(params.projectName)
+const newToolName = changeCase.pascal(params.projectName) + "Tool"
 
-let packageJson = await fs.readFile("package.json")
+await fs.inPlaceUpdate("src/node-ts-cli.ts", [[/NodeTsCliTool/g, newToolName]])
+await fs.inPlaceUpdate("src/NodeTsCliTool.ts", [
+  [/NodeTsCliTool/g, newToolName],
+])
+await fs.inPlaceUpdate("src/NodeTsCliTool.test.ts", [
+  [/NodeTsCliTool/g, newToolName],
+])
 
-packageJson = packageJson
-  .replace(/node-ts-cli/g, params.projectName)
-  .replace(/some-user/g, params.userName)
+await fs.move("src/node-ts-cli.ts", path.join("src", newBinName + ".ts"))
+await fs.move("src/NodeTsCliTool.ts", path.join("src", newToolName + ".ts"))
+await fs.move(
+  "src/NodeTsCliTool.test.ts",
+  path.join("src", newToolName + ".test.ts")
+)
 
-await fs.writeFile("package.json", packageJson)
+await fs.inPlaceUpdate("package.json", [
+  [/node-ts-cli/g, newBinName],
+  [/some-user/g, params.userName],
+])
 
-let license = await fs.readFile("LICENSE")
+await fs.inPlaceUpdate("LICENSE", [[/Some User/, params.copyrightOwner]])
 
-license.replace(/Some User/, params.copyrightOwner)
-
-await fs.writeFile("LICENSE", license)
-
-await fs.mkdir(".vscode")
+await fs.ensureDir(".vscode")
